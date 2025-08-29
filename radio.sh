@@ -110,7 +110,6 @@ export -f list_tags
 # echo $(cat stations.json | jq 'map(.stationuuid +": "+.name)|.[]'| fzf --bind 'alt-right:reload(cat stations.json|jq "map(.stationuuid + \": \" + .tags)|.[]"),tab:reload(tags={fzf:query};cat stations.json|jq "select(.name==\"$tags\")")')
 
 category=""
-export radio_search_filter
 export category
 state="select_filter_type"
 
@@ -159,18 +158,20 @@ function add_to_favourite(){
 export -f add_to_favourite
 function reload_script(){
 	local state=$1
+	local radio_search_filter_k
+	local radio_search_filter_v
 	case $state in
 		select_filter_type)
 			list_station_keys ;;
 		select_filter_value)
-			export radio_search_filter=$2
-			list_valid_condidates $radio_search_filter ;;
+			radio_search_filter_k=$2
+			list_valid_condidates $radio_search_filter_k ;;
 		favourite_stations)
 			cat "$fav_dbfile" | jq -r '.[]|(.stationuuid+":"+.name)'|sed 's/:[[:blank:]]*/:/g';;
 		filter_stations|*)
-			read radio_search_filter < /tmp/filter_type_pipe
-
-			fetch_filtered_stations_value_with_uuid "$(filter_stations $radio_search_filter "$2")" ;;
+			read radio_search_filter_v < /tmp/filter_v
+			read radio_search_filter_k < /tmp/filter_k
+			fetch_filtered_stations_value_with_uuid "$(filter_stations "$radio_search_filter_k" "$radio_search_filter_v")" ;;
 	esac
 }
 export -f reload_script
@@ -210,11 +211,11 @@ function main(){
 							 --border\
 							 --with-nth -1\
 							 --border-label $label  --prompt "分类: "\
-							 --bind 'ctrl-a:execute(add_to_favourite $fav_dbfile {1})'\
+							 --bind 'ctrl-a:execute(add_to_favourite $fav_dbfile {1})+reload(reload_script filter_stations)'\
 							 --bind 'ctrl-f:reload(reload_script favourite_stations)+transform-prompt(echo 收藏电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")+clear-query' \
-							 --bind 'ctrl-l:reload(reload_script filter_stations {} {q})+transform-prompt(echo 电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")+clear-query' \
+							 --bind 'ctrl-l:execute-silent(echo {}>/tmp/filter_v)+reload(reload_script filter_stations {})+transform-prompt(echo 电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")+clear-query' \
 							 --bind 'ctrl-h:reload(reload_script select_filter_type {})+transform-prompt(echo 分类: )+transform-border-label(echo $label)+transform-input-label(echo " 分类器 ")+clear-query' \
-							 --bind 'tab:execute-silent(echo {}>/tmp/filter_type_pipe&)+reload(reload_script select_filter_value {})+transform-prompt(echo {}:)+transform-border-label(echo "请选择"{})+transform-input-label(echo -e {}"[\e[7;33mC-h\e[0m返回分类选择器]")+clear-query'\
+							 --bind 'one,tab:execute-silent(echo {}>/tmp/filter_k)+reload(reload_script select_filter_value {})+transform-prompt(echo {}:)+transform-border-label(echo "请选择"{})+transform-input-label(echo -e {}"[\e[7;33mC-h\e[0m返回分类选择器]")+clear-query'\
 							 --preview 'preview_station {1}'
 							 # --preview 'uuid={1};echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq -r .url|xargs mpv >/dev/null 2>&1 && echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")'
 							 # --preview 'uuid={1};echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq "pick(.url)"|xargs mpv >/dev/null && echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq "pick(.name, .url, .homepage, .country, .language, .votes, .codec, .tags, .countrycode)"'
