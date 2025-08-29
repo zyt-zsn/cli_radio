@@ -88,7 +88,7 @@ function list_station_keys(){
 function list_valid_condidates(){
 	# cat test.json | jq '.' | jq 'unique_by(.["language"]).[]' | jq .name
 	local k=$1
-	if [[ $k=="name" ]]
+	if [[ $k == "name" ]]
 	then
 		local fav_uuids=$(favourite_station_uuid_array)
 		# echo -n "$sta_json_array" | jq -r --arg fav_uuids "$fav_uuids" '.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.name'
