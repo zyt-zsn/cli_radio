@@ -95,10 +95,10 @@ function list_valid_condidates(){
 		# cat $dbfile | jq '.'|jq -r --arg fav_uuids "$fav_uuids" 'unique_by(.name).[]|if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
 		# cat $dbfile | jq '.'|jq -r --arg k $k --arg fav_uuids "$fav_uuids" 'unique_by(.name).[]|if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
 		# cat $dbfile | jq '.'|jq -r --arg k $k --arg fav_uuids "$fav_uuids" '.[]|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
-		cat $dbfile | jq '.'|jq -r --arg k $k --arg fav_uuids "$fav_uuids" 'sort_by(.votes)|reverse[]|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
+		cat $dbfile | jq -r --arg k $k --arg fav_uuids "$fav_uuids" '.|sort_by(.votes)|reverse[]|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
 		# cat $dbfile | jq '.'|jq -r --arg k $k 'unique_by(.[$k]).[].[$k]'
 	else
-		cat $dbfile | jq '.'|jq -r --arg k $k 'unique_by(.[$k]).[].[$k]'
+		cat $dbfile | jq -r --arg k $k '.|unique_by(.[$k]).[].[$k]'
 	fi
 }
 export -f list_station_keys
