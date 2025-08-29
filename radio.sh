@@ -168,7 +168,8 @@ function reload_script(){
 		favourite_stations)
 			cat "$fav_dbfile" | jq -r '.[]|(.stationuuid+":"+.name)'|sed 's/:[[:blank:]]*/:/g';;
 		filter_stations|*)
-			read radio_search_filter < ./filter
+			read radio_search_filter < /tmp/filter_type_pipe
+
 			fetch_filtered_stations_value_with_uuid "$(filter_stations $radio_search_filter "$2")" ;;
 	esac
 }
@@ -191,6 +192,7 @@ function preview_station(){
 }
 export -f preview_station
 function main(){
+	mkfifo /tmp/filter_type_pipe
 	# update_station_db test.json 10
 	# fetch_stations_value_with_uuid stationuuid name
 	# fetch_stations_value_with_uuid stationuuid
@@ -212,7 +214,7 @@ function main(){
 							 --bind 'ctrl-f:reload(reload_script favourite_stations)+transform-prompt(echo 收藏电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")+clear-query' \
 							 --bind 'ctrl-l:reload(reload_script filter_stations {} {q})+transform-prompt(echo 电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")+clear-query' \
 							 --bind 'ctrl-h:reload(reload_script select_filter_type {})+transform-prompt(echo 分类: )+transform-border-label(echo $label)+transform-input-label(echo " 分类器 ")+clear-query' \
-							 --bind 'tab:execute-silent(echo {}>./filter)+reload(reload_script select_filter_value {})+transform-prompt(echo {}:)+transform-border-label(echo "请选择"{})+transform-input-label(echo -e {}"[\e[7;33mC-h\e[0m返回分类选择器]")+clear-query'\
+							 --bind 'tab:execute-silent(echo {}>/tmp/filter_type_pipe&)+reload(reload_script select_filter_value {})+transform-prompt(echo {}:)+transform-border-label(echo "请选择"{})+transform-input-label(echo -e {}"[\e[7;33mC-h\e[0m返回分类选择器]")+clear-query'\
 							 --preview 'preview_station {1}'
 							 # --preview 'uuid={1};echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq -r .url|xargs mpv >/dev/null 2>&1 && echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")'
 							 # --preview 'uuid={1};echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq "pick(.url)"|xargs mpv >/dev/null && echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq "pick(.name, .url, .homepage, .country, .language, .votes, .codec, .tags, .countrycode)"'
