@@ -192,7 +192,7 @@ function preview_station(){
 }
 export -f preview_station
 function main(){
-	mkfifo /tmp/filter_type_pipe
+	[ -p /tmp/filter_type_pipe ] || mkfifo /tmp/filter_type_pipe
 	# update_station_db test.json 10
 	# fetch_stations_value_with_uuid stationuuid name
 	# fetch_stations_value_with_uuid stationuuid
