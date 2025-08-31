@@ -82,6 +82,23 @@ function get_station_dbcashe(){
 function list_station_keys(){
 	cat $dbfile|jq '.[1]'|jq -r 'keys|.[]'
 }
+
+function countrycode2flag(){
+	# [[**  (bookmark--jump-via "("Regional indicator symbol - Wikipedia" (front-context-string . "U+1F1Ex     🇦   ") (rear-context-string . "F1E5 omitted)  \n") (position . 14184) (last-modified 26803 9316 498769 941000) (location  . "https://en.wikipedia.org/wiki/Regional_indicator_symbol#Unicode_block") (handler . eww-bookmark-jump) (defaults "Regional indicator symbol - Wikipedia" "*eww*"))" 'switch-to-buffer-other-window)  **]]
+	local f1
+	local f2
+	local code
+	code="$1"
+	f1=$(printf %X $(( 0x1F1E6+$(printf "%d" "'${code:0:1}") - 65 )))
+	f2=$(printf %X $(( 0x1F1E6+$(printf "%d" "'${code:1:1}") - 65 )))
+	printf "\U$f1\U$f2"
+}
+export -f countrycode2flag
+function sed_coutrycode_to_flag(){
+	local countrycode="$1"
+	echo "$(countrycode2flag $countrycode)$2"
+}
+export -f sed_coutrycode_to_flag
 # list all valid chocies with respect of specific key
 # paramter
 #  k: query key name
@@ -97,6 +114,10 @@ function list_valid_condidates(){
 		# cat $dbfile | jq '.'|jq -r --arg k $k --arg fav_uuids "$fav_uuids" '.[]|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
 		cat $dbfile | jq -r --arg k $k --arg fav_uuids "$fav_uuids" '.|sort_by(.votes)|reverse[]|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
 		# cat $dbfile | jq '.'|jq -r --arg k $k 'unique_by(.[$k]).[].[$k]'
+	elif [[ $k == "country" ]]; then
+		# cat $dbfile | jq -r --arg k $k '.|unique_by(.[$k]).[]|"Country:"+.[$k]'
+		cat $dbfile | jq -r --arg k $k '.|unique_by(.[$k]).[]|"\\#"+.countrycode+"\\#"+.[$k]' | sed -e 's/\\#\(.*\)\\#\(.*\)/sed_coutrycode_to_flag \1 "\2"/e'
+		# cat $dbfile | jq -r --arg k $k '.|unique_by(.[$k]).[]|"\\#"+.countrycode+"\\#"+.[$k]' | sed -e 's/\\#\(.*\)\\#\(.*\)/\2 & \1/g'
 	else
 		cat $dbfile | jq -r --arg k $k '.|unique_by(.[$k]).[].[$k]'
 	fi
@@ -171,6 +192,10 @@ function reload_script(){
 		filter_stations|*)
 			read radio_search_filter_v < /tmp/filter_v
 			read radio_search_filter_k < /tmp/filter_k
+			if [[ $radio_search_filter_k == "country" ]];then
+				# skip national flag parg
+				radio_search_filter_v=${radio_search_filter_v:2}
+			fi
 			fetch_filtered_stations_value_with_uuid "$(filter_stations "$radio_search_filter_k" "$radio_search_filter_v")" ;;
 	esac
 }
@@ -178,16 +203,30 @@ export -f reload_script
 #parmeter stationuuid
 function preview_station(){
 	local uuid=$1
-	# export stationuuid=$(echo $(cat stations.json | jq 'map(.name +": "+.stationuuid)|.[]'| fzf --delimiter ":" --with-nth 1 --accept-nth 2 --preview 'uuid=$(echo {2}|sed "s/\"$//g");echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq "pick(.name, .url, .homepage, .country, .language, .votes, .codec, .tags, .countrycode)" && echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq .url|xargs mpv >/dev/null 2>&1 '|sed 's/\"$//g'));cat stations.json | jq '.[]'| jq 'select(.stationuuid==env.stationuuid)|.url'|xargs mpv
+	local countrycode
+
 	station=$(cat $dbfile | jq --arg uuid "$uuid" '.[]|select(.stationuuid==$uuid)')
+	# export stationuuid=$(echo $(cat stations.json | jq 'map(.name +": "+.stationuuid)|.[]'| fzf --delimiter ":" --with-nth 1 --accept-nth 2 --preview 'uuid=$(echo {2}|sed "s/\"$//g");echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq "pick(.name, .url, .homepage, .country, .language, .votes, .codec, .tags, .countrycode)" && echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq .url|xargs mpv >/dev/null 2>&1 '|sed 's/\"$//g'));cat stations.json | jq '.[]'| jq 'select(.stationuuid==env.stationuuid)|.url'|xargs mpv
 	if [ ${#station} -gt 1 ];then
-		station_info=$(echo $station | jq -r '("电台名称:"+.name, "电台ID:"+.stationuuid, "标签分类:"+.tags, "播放链接:"+.url, "官方网址:"+.home, "国家:"+.country, "语言:"+.language, "听众投票数:"+(.votes|tostring))')
-		mpv $(echo $station | jq -r .url)|\
-		while true;do
-			echo -e "\033[2J"
-			echo -e "$station_info"
-			sleep 8
-		done
+		[[ $2 == "play" ]] && echo $(echo $station | jq -r '.name+"|"+.url') > /tmp/listening_radio
+		# https://en.wikipedia.org/wiki/Regional_indicator_symbol#Unicode_block
+		# [[**  (bookmark--jump-via "("Regional indicator symbol - Wikipedia" (front-context-string . "U+1F1Ex     🇦   ") (rear-context-string . "F1E5 omitted)  \n") (position . 14184) (last-modified 26803 9316 498769 941000) (location  . "https://en.wikipedia.org/wiki/Regional_indicator_symbol#Unicode_block") (handler . eww-bookmark-jump) (defaults "Regional indicator symbol - Wikipedia" "*eww*"))" 'switch-to-buffer-other-window)  **]]
+		countrycode=$(echo $station | jq -r .countrycode)
+		flag=$(countrycode2flag $countrycode)
+		station_info=$(echo $station | jq -r --arg flag "$flag" '("📻:"+.name, "电台ID:"+.stationuuid, "标签分类:"+.tags, "播放链接:"+.url, "官方网址:"+.home, $flag+":"+.country, "语言:"+.language, "听众投票数:"+(.votes|tostring))')
+		echo -n -e "$station_info"
+		if [[ -f /tmp/listening_radio ]]; then
+			local radion
+			read radio < /tmp/listening_radio
+			# pkill -9 mpv;nohup mpv $(echo $station | jq -r .url) > /dev/null 2>&1 &
+			mpv "$(echo "$radio" | awk -F "|"  '{print $2}')"|\
+				while true;do
+					echo -e "\033[2J"
+					echo -e "$station_info"
+					echo -e "Currently listening:" $radio
+					sleep 8
+				done
+		fi
 	fi
 	# station_info="$(cat $dbfile | jq -r --arg uuid $uuid '.[]|select(.stationuuid==$uuid)|("电台名称:"+.name, "标签分类:"+.tags, "播放链接:"+.url, "官方网址:"+.home, "国家:"+.country, "语言:"+.language, "听众投票数:"+(.votes|tostring))')"
 }
@@ -201,8 +240,10 @@ function main(){
 	label="$(echo -n -e "--请选择分类标准--" | lolcat -f)"
 
 	local filter_value
+	# --bind 'focus:preview(preview_station {1} "info")'\
 	filter_value=$(echo -n "$(list_station_keys)"\
 					   | fzf --style full\
+							 --preview-label " 电台信息 "\
 							 --no-sort\
 							 --exact\
 							 --delimiter ":"\
@@ -211,12 +252,14 @@ function main(){
 							 --border\
 							 --with-nth -1\
 							 --border-label $label  --prompt "分类: "\
+							 --bind 'ctrl-p:preview(preview_station {1} "play")'\
+							 --bind 'enter:execute-silent(preview_station {1} "play")+accept'\
 							 --bind 'ctrl-a:execute(add_to_favourite $fav_dbfile {1})+reload(reload_script filter_stations)'\
 							 --bind 'ctrl-f:reload(reload_script favourite_stations)+transform-prompt(echo 收藏电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")+clear-query' \
 							 --bind 'ctrl-l:execute-silent(echo {}>/tmp/filter_v)+reload(reload_script filter_stations {})+transform-prompt(echo 电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")+clear-query' \
 							 --bind 'ctrl-h:reload(reload_script select_filter_type {})+transform-prompt(echo 分类: )+transform-border-label(echo $label)+transform-input-label(echo " 分类器 ")+clear-query' \
 							 --bind 'one,tab:execute-silent(echo {}>/tmp/filter_k)+reload(reload_script select_filter_value {})+transform-prompt(echo {}:)+transform-border-label(echo "请选择"{})+transform-input-label(echo -e {}"[\e[7;33mC-h\e[0m返回分类选择器]")+clear-query'\
-							 --preview 'preview_station {1}'
+							 # --preview 'preview_station {1}'
 							 # --preview 'uuid={1};echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq -r .url|xargs mpv >/dev/null 2>&1 && echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")'
 							 # --preview 'uuid={1};echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq "pick(.url)"|xargs mpv >/dev/null && echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq "pick(.name, .url, .homepage, .country, .language, .votes, .codec, .tags, .countrycode)"'
 				)
