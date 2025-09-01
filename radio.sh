@@ -1,4 +1,9 @@
 #! /usr/bin/bash +x
+#
+# Script name: dm-cli-radio
+# Description: listen radio on line in terminal 
+# Dependencies: jq, fzf, mpv
+# Contributors: zyt
 
 export dbfile=~/.config/radio/stations.json
 
