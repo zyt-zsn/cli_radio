@@ -261,6 +261,15 @@ function dec_layer(){
 		set_current_layer $(( $(current_layer) - 1 ))
 	fi
 }
+function current_filter(){
+	local ret=""
+	for (( i=1; i<$(current_layer); i++ ));do
+		ret="$ret"/"$(value_of_layer $i)"
+	done
+	[[ -n $ret ]] && ret="$ret"/"$1" || ret="$1"
+	echo -n -e "过滤器:$ret"
+	}
+export -f current_filter
 export -f inc_layer
 export -f dec_layer
 export -f set_current_layer
@@ -408,6 +417,7 @@ function main(){
 					   | fzf --style full\
 							 --preview-label " 电台信息 "\
 							 --delimiter ":"\
+							 --exact\
 							 --ansi\
 							 --sync\
 							 --input-label ' 分类器 '\
@@ -416,7 +426,7 @@ function main(){
 							 --border-label $label  --prompt "分类: "\
 							 --bind 'ctrl-p:execute-silent(pkill -9 mpv;preview_station {1} "play")+transform-preview-label(echo {1})+transform-header([ $(current_layer) = 3 ] && echo -n -e "当前播放\n" "$(station_info {1})")'\
 							 --bind 'load:transform-query(current_layer_value)+rebind(right,ctrl-l,left,ctrl-h)' \
-							 --bind 'focus:preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {-1})'\
+							 --bind 'focus:preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {-1})+transform-input-label(current_filter {-1})'\
 							 --bind 'enter:execute-silent(preview_station {1} "play")+accept'\
 							 --bind 'ctrl-a:execute(add_to_favourite $fav_dbfile {1})+reload(reload_script filter_stations)'\
 							 --bind 'ctrl-f:execute-silent(set_current_layer 3)+reload(reload_script favourite_stations)+transform-prompt(echo 收藏电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")+clear-query' \
