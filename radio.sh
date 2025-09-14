@@ -57,19 +57,25 @@ export -f favourite_station_uuid_array
 
 function fetch_filtered_stations_value_with_uuid2(){
 	# local sta_json_array=$(filter_stations language spanish) 
+	[[ -d ${RADIO_RUN_DIR}/condidates/filtered ]] || mkdir ${RADIO_RUN_DIR}/condidates/filtered
+
 	local sta_json_array=$1
 	local fav_uuids=$(favourite_station_uuid_array)
-	local k=$1
-	local v=$2
+	local k="$1"
+	local v="$2"
 
-	[[ $k == "country" ]] && v=${v:2}
-	# zyt=$(jq -r .[].stationuuid favourite_stations.json)
-	# cat favourite_stations.json | jq --arg fav_uuids "$zyt" '.[].stationuuid+if .[].stationuuid|inside($fav_uuids) then ":💘" else ":" end+"name"'
-	# cat favourite_stations.json|jq .[] | jq --arg fav_uuids "$zyt" '.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":" end+.name'
-	#zyt
+	if [[ -f ${RADIO_RUN_DIR}/condidates/filtered/"$k"_"$v" ]];then
+		cat ${RADIO_RUN_DIR}/condidates/filtered/"$k"_"$v"
+	else
+		[[ $k == "country" ]] && v=${v:2}
+		# zyt=$(jq -r .[].stationuuid favourite_stations.json)
+		# cat favourite_stations.json | jq --arg fav_uuids "$zyt" '.[].stationuuid+if .[].stationuuid|inside($fav_uuids) then ":💘" else ":" end+"name"'
+		# cat favourite_stations.json|jq .[] | jq --arg fav_uuids "$zyt" '.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":" end+.name'
+		#zyt
 
-	cat $dbfile | jq -r --arg k "$k" --arg v "$v" --arg fav_uuids "$fav_uuids" '.[]|select(.[$k]==$v)|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.name'
-	# cat $dbfile | jq --arg k "$1" --arg v "$2" -r '.[]|select(.[$k]==$v)|.stationuuid+":"+.["name"]'
+		cat $dbfile | jq -r --arg k "$k" --arg v "$v" --arg fav_uuids "$fav_uuids" '.[]|select(.[$k]==$v)|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.name'|tee ${RADIO_RUN_DIR}/condidates/filtered/"$k"_"$v"
+		# cat $dbfile | jq --arg k "$1" --arg v "$2" -r '.[]|select(.[$k]==$v)|.stationuuid+":"+.["name"]'
+	fi
 }
 function fetch_filtered_stations_value_with_uuid(){
 	# local sta_json_array=$(filter_stations language spanish) 
@@ -100,10 +106,15 @@ function update_station_db(){
 function get_station_dbcashe(){
 	echo station.json
 }
-
+RADIO_RUN_DIR=/run/user/1000/radio
+export RADIO_RUN_DIR
 #list all the supported searching key of station
 function list_station_keys(){
-	cat $dbfile|jq '.[1]'|jq -r 'keys|.[]'
+	if [[ -f ${RADIO_RUN_DIR}/keys ]]; then
+		cat ${RADIO_RUN_DIR}/keys
+	else
+		cat $dbfile|jq '.[1]'|jq -r 'keys|.[]'|tee ${RADIO_RUN_DIR}/keys
+	fi
 }
 
 function countrycode2flag(){
@@ -128,21 +139,27 @@ export -f sed_coutrycode_to_flag
 function list_valid_condidates(){
 	# cat test.json | jq '.' | jq 'unique_by(.["language"]).[]' | jq .name
 	local k=$1
-	if [[ $k == "name" ]]
-	then
-		local fav_uuids=$(favourite_station_uuid_array)
-		# echo -n "$sta_json_array" | jq -r --arg fav_uuids "$fav_uuids" '.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.name'
-		# cat $dbfile | jq '.'|jq -r --arg fav_uuids "$fav_uuids" 'unique_by(.name).[]|if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
-		# cat $dbfile | jq '.'|jq -r --arg k $k --arg fav_uuids "$fav_uuids" 'unique_by(.name).[]|if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
-		# cat $dbfile | jq '.'|jq -r --arg k $k --arg fav_uuids "$fav_uuids" '.[]|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
-		cat $dbfile | jq -r --arg k $k --arg fav_uuids "$fav_uuids" '.|sort_by(.votes)|reverse[]|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
-		# cat $dbfile | jq '.'|jq -r --arg k $k 'unique_by(.[$k]).[].[$k]'
-	elif [[ "$k" == "country" ]]; then
-		# cat $dbfile | jq -r --arg k $k '.|unique_by(.[$k]).[]|"Country:"+.[$k]'
-		cat $dbfile | jq -r --arg k "$k" '.|unique_by(.[$k]).[]|"\\#"+.countrycode+"\\#"+.[$k]' | sed -e 's/\\#\(.*\)\\#\(.*\)/sed_coutrycode_to_flag \1 "\2"/e'
-		# cat $dbfile | jq -r --arg k $k '.|unique_by(.[$k]).[]|"\\#"+.countrycode+"\\#"+.[$k]' | sed -e 's/\\#\(.*\)\\#\(.*\)/\2 & \1/g'
+
+	[[ -d ${RADIO_RUN_DIR}/condidates ]] || mkdir ${RADIO_RUN_DIR}/condidates
+	if [[ -f ${RADIO_RUN_DIR}/condidates/$k ]];then
+		cat ${RADIO_RUN_DIR}/condidates/$k
 	else
-		cat $dbfile | jq -r --arg k "$k" '.|unique_by(.[$k]).[].[$k]'
+		if [[ $k == "name" ]]
+		then
+			local fav_uuids=$(favourite_station_uuid_array)
+			# echo -n "$sta_json_array" | jq -r --arg fav_uuids "$fav_uuids" '.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.name'
+			# cat $dbfile | jq '.'|jq -r --arg fav_uuids "$fav_uuids" 'unique_by(.name).[]|if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
+			# cat $dbfile | jq '.'|jq -r --arg k $k --arg fav_uuids "$fav_uuids" 'unique_by(.name).[]|if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
+			# cat $dbfile | jq '.'|jq -r --arg k $k --arg fav_uuids "$fav_uuids" '.[]|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'
+			cat $dbfile | jq -r --arg k $k --arg fav_uuids "$fav_uuids" '.|sort_by(.votes)|reverse[]|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.[$k]'|tee ${RADIO_RUN_DIR}/condidates/$k
+			# cat $dbfile | jq '.'|jq -r --arg k $k 'unique_by(.[$k]).[].[$k]'
+		elif [[ "$k" == "country" ]]; then
+			# cat $dbfile | jq -r --arg k $k '.|unique_by(.[$k]).[]|"Country:"+.[$k]'
+			cat $dbfile | jq -r --arg k "$k" '.|unique_by(.[$k]).[]|"\\#"+.countrycode+"\\#"+.[$k]' | sed -e 's/\\#\(.*\)\\#\(.*\)/sed_coutrycode_to_flag \1 "\2"/e'|tee ${RADIO_RUN_DIR}/condidates/$k
+			# cat $dbfile | jq -r --arg k $k '.|unique_by(.[$k]).[]|"\\#"+.countrycode+"\\#"+.[$k]' | sed -e 's/\\#\(.*\)\\#\(.*\)/\2 & \1/g'
+		else
+			cat $dbfile | jq -r --arg k "$k" '.|unique_by(.[$k]).[].[$k]'|tee ${RADIO_RUN_DIR}/condidates/$k
+		fi
 	fi
 }
 export -f list_station_keys
@@ -377,6 +394,7 @@ export -f station_info
 # exit
 set_current_layer 1
 function main(){
+	[ -d ${RADIO_RUN_DIR} ] || mkdir -p ${RADIO_RUN_DIR}
 	[ -p /tmp/filter_type_pipe ] || mkfifo /tmp/filter_type_pipe
 	# update_station_db test.json 10
 	# fetch_stations_value_with_uuid stationuuid name
