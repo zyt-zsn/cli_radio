@@ -423,16 +423,15 @@ function main(){
 							 --input-label ' 分类器 '\
 							 --border\
 							 --with-nth -1\
-							 --border-label $label  --prompt "分类: "\
+							 --border-label $label  --prompt "请选择: "\
 							 --bind 'ctrl-p:execute-silent(pkill -9 mpv;preview_station {1} "play")+transform-preview-label(echo {1})+transform-header([ $(current_layer) = 3 ] && echo -n -e "当前播放\n" "$(station_info {1})")'\
 							 --bind 'load:transform-query(current_layer_value)+rebind(right,ctrl-l,left,ctrl-h)' \
 							 --bind 'focus:preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {-1})+transform-input-label(current_filter {-1})'\
 							 --bind 'enter:execute-silent(preview_station {1} "play")+accept'\
 							 --bind 'ctrl-a:execute(add_to_favourite $fav_dbfile {1})+reload(reload_script filter_stations)'\
 							 --bind 'ctrl-f:execute-silent(set_current_layer 3)+reload(reload_script favourite_stations)+transform-prompt(echo 收藏电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")+clear-query' \
-							 --bind 'right,ctrl-l:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(inc_layer {})+reload-sync(reload_layer $(current_layer) {})+transform-prompt(echo 电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")' \
-							 --bind 'left,ctrl-h:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(dec_layer)+reload-sync(reload_layer $(current_layer) "")+transform-prompt(echo 电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")' \
-							 --bind 'tab:execute-silent(echo {}>${RADIO_RUN_DIR}/filter_k)+reload(reload_script select_filter_value {})+transform-prompt(echo {}:)+transform-border-label(echo "请选择"{})+transform-input-label(echo -e {}"[\e[7;33mC-h\e[0m返回分类选择器]")+clear-query'\
+							 --bind 'right,ctrl-l:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(inc_layer {})+reload-sync(reload_layer $(current_layer) {})+transform-border-label(echo $label)' \
+							 --bind 'left,ctrl-h:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(dec_layer)+reload-sync(reload_layer $(current_layer) "")+transform-border-label(echo $label)' \
 				)
 
            # fzf --bind 'focus:transform-header:file --brief {}'
