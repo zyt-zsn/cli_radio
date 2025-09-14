@@ -218,30 +218,30 @@ function add_to_favourite(){
 }
 export -f add_to_favourite
 function set_current_layer(){
-	[[ $1 -ge 1 ]] && [[ $1 -le 4 ]] && echo $1 > /tmp/current_layer
+	[[ $1 -ge 1 ]] && [[ $1 -le 4 ]] && echo $1 > ${RADIO_RUN_DIR}/current_layer
 }
 function current_layer(){
-	cat /tmp/current_layer
+	cat ${RADIO_RUN_DIR}/current_layer
 }
 #Get filter value of layer $1
 #Parameter:
 #$1: target layer
 function value_of_layer(){
-	cat /tmp/layer${1}
+	cat ${RADIO_RUN_DIR}/layer${1}
 }
 
 function current_layer_value(){
-	cat /tmp/layer$(current_layer)
+	cat ${RADIO_RUN_DIR}/layer$(current_layer)
 }
 
 #Set filter value of layer $1 with value $2 
 function update_layer(){
-	echo "$2" > /tmp/layer${1}
+	echo "$2" > ${RADIO_RUN_DIR}/layer${1}
 }
 
 #Clear filter value of layer $1 with value $2 
 function clear_layer(){
-	echo "" > /tmp/layer${1}
+	echo "" > ${RADIO_RUN_DIR}/layer${1}
 }
 #Set filter value of current layer with $1 
 function update_current_layer(){
@@ -332,8 +332,8 @@ function reload_script(){
 		favourite_stations)
 			cat "$fav_dbfile" | jq -r '.[]|(.stationuuid+":"+.name)'|sed 's/:[[:blank:]]*/:/g';;
 		filter_stations|*)
-			read radio_search_filter_v < /tmp/filter_v
-			read radio_search_filter_k < /tmp/filter_k
+			read radio_search_filter_v < ${RADIO_RUN_DIR}/filter_v
+			read radio_search_filter_k < ${RADIO_RUN_DIR}/filter_k
 			if [[ $radio_search_filter_k == "country" ]];then
 				# skip national flag parg
 				radio_search_filter_v=${radio_search_filter_v:2}
@@ -351,17 +351,17 @@ function preview_station(){
 	station=$(cat $dbfile | jq --arg uuid "$uuid" '.[]|select(.stationuuid==$uuid)')
 	# export stationuuid=$(echo $(cat stations.json | jq 'map(.name +": "+.stationuuid)|.[]'| fzf --delimiter ":" --with-nth 1 --accept-nth 2 --preview 'uuid=$(echo {2}|sed "s/\"$//g");echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq "pick(.name, .url, .homepage, .country, .language, .votes, .codec, .tags, .countrycode)" && echo $(cat stations.json | jq ".[]"| jq "select(.stationuuid==\"$uuid\")")|jq .url|xargs mpv >/dev/null 2>&1 '|sed 's/\"$//g'));cat stations.json | jq '.[]'| jq 'select(.stationuuid==env.stationuuid)|.url'|xargs mpv
 	if [ ${#station} -gt 1 ];then
-		[ $2 = "play" ] && echo $(echo $station | jq -r '.name+"|"+.url') > /tmp/listening_radio
+		[ $2 = "play" ] && echo $(echo $station | jq -r '.name+"|"+.url') > ${RADIO_RUN_DIR}/listening_radio
 		# https://en.wikipedia.org/wiki/Regional_indicator_symbol#Unicode_block
 		# [[**  (bookmark--jump-via "("Regional indicator symbol - Wikipedia" (front-context-string . "U+1F1Ex     🇦   ") (rear-context-string . "F1E5 omitted)  \n") (position . 14184) (last-modified 26803 9316 498769 941000) (location  . "https://en.wikipedia.org/wiki/Regional_indicator_symbol#Unicode_block") (handler . eww-bookmark-jump) (defaults "Regional indicator symbol - Wikipedia" "*eww*"))" 'switch-to-buffer-other-window)  **]]
 		countrycode=$(echo $station | jq -r .countrycode)
 		flag=$(countrycode2flag $countrycode)
 		station_info=$(echo $station | jq -r --arg flag "$flag" '("📻:"+.name, "电台ID:"+.stationuuid, "标签分类:"+.tags, "播放链接:"+.url, "官方网址:"+.home, $flag+":"+.country, "语言:"+.language, "听众投票数:"+(.votes|tostring))')
 		echo -n -e "$station_info"
-		if [[ -f /tmp/listening_radio ]] && [ $2 == "play" ]; then
-		# if [[ -f /tmp/listening_radio ]]; then
+		if [[ -f ${RADIO_RUN_DIR}/listening_radio ]] && [ $2 == "play" ]; then
+		# if [[ -f ${RADIO_RUN_DIR}/listening_radio ]]; then
 			local radion
-			read radio < /tmp/listening_radio
+			read radio < ${RADIO_RUN_DIR}/listening_radio
 			# pkill -9 mpv;nohup mpv $(echo $station | jq -r .url) > /dev/null 2>&1 &
 
 			pgrep mpv || setsid -f mpv --loop-playlist=force "$(echo "$radio" | awk -F "|"  '{print $2}')" &
@@ -404,7 +404,7 @@ export -f station_info
 set_current_layer 1
 function main(){
 	[ -d ${RADIO_RUN_DIR} ] || mkdir -p ${RADIO_RUN_DIR}
-	[ -p /tmp/filter_type_pipe ] || mkfifo /tmp/filter_type_pipe
+	[ -p ${RADIO_RUN_DIR}/filter_type_pipe ] || mkfifo ${RADIO_RUN_DIR}/filter_type_pipe
 	# update_station_db test.json 10
 	# fetch_stations_value_with_uuid stationuuid name
 	# fetch_stations_value_with_uuid stationuuid
@@ -432,7 +432,7 @@ function main(){
 							 --bind 'ctrl-f:execute-silent(set_current_layer 3)+reload(reload_script favourite_stations)+transform-prompt(echo 收藏电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")+clear-query' \
 							 --bind 'right,ctrl-l:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(inc_layer {})+reload-sync(reload_layer $(current_layer) {})+transform-prompt(echo 电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")' \
 							 --bind 'left,ctrl-h:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(dec_layer)+reload-sync(reload_layer $(current_layer) "")+transform-prompt(echo 电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")' \
-							 --bind 'tab:execute-silent(echo {}>/tmp/filter_k)+reload(reload_script select_filter_value {})+transform-prompt(echo {}:)+transform-border-label(echo "请选择"{})+transform-input-label(echo -e {}"[\e[7;33mC-h\e[0m返回分类选择器]")+clear-query'\
+							 --bind 'tab:execute-silent(echo {}>${RADIO_RUN_DIR}/filter_k)+reload(reload_script select_filter_value {})+transform-prompt(echo {}:)+transform-border-label(echo "请选择"{})+transform-input-label(echo -e {}"[\e[7;33mC-h\e[0m返回分类选择器]")+clear-query'\
 				)
 
            # fzf --bind 'focus:transform-header:file --brief {}'
