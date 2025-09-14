@@ -218,10 +218,15 @@ function add_to_favourite(){
 }
 export -f add_to_favourite
 function set_current_layer(){
-	[[ $1 -ge 1 ]] && [[ $1 -le 4 ]] && echo $1 > ${RADIO_RUN_DIR}/current_layer
+	if [[ "$1" =~ "favourites" ]]; then
+		echo -e "$1" > ${RADIO_RUN_DIR}/current_layer
+	else
+		[[ $1 -ge 1 ]] && [[ $1 -le 4 ]] && echo $1 > ${RADIO_RUN_DIR}/current_layer
+	fi
 }
 function current_layer(){
-	cat ${RADIO_RUN_DIR}/current_layer
+	# cat ${RADIO_RUN_DIR}/current_layer
+	head -n 1 ${RADIO_RUN_DIR}/current_layer
 }
 #Get filter value of layer $1
 #Parameter:
@@ -231,7 +236,7 @@ function value_of_layer(){
 }
 
 function current_layer_value(){
-	cat ${RADIO_RUN_DIR}/layer$(current_layer)
+	head -n 1 ${RADIO_RUN_DIR}/layer$(current_layer)
 }
 
 #Set filter value of layer $1 with value $2 
@@ -262,13 +267,17 @@ function dec_layer(){
 	fi
 }
 function current_filter(){
-	local ret=""
-	for (( i=1; i<$(current_layer); i++ ));do
-		ret="$ret"/"$(value_of_layer $i)"
-	done
-	[[ -n $ret ]] && ret="$ret"/"$1" || ret="$1"
-	echo -n -e "过滤器:$ret"
-	}
+	if [ "favourites" == `tail -n 1 ${RADIO_RUN_DIR}/current_layer` ];then
+		echo 收藏电台:"$1"
+	else
+		local ret=""
+		for (( i=1; i<$(current_layer); i++ ));do
+			ret="$ret"/"$(value_of_layer $i)"
+		done
+		[[ -n $ret ]] && ret="$ret"/"$1" || ret="$1"
+		echo -n -e "过滤器:$ret"
+	fi
+}
 export -f current_filter
 export -f inc_layer
 export -f dec_layer
@@ -429,7 +438,7 @@ function main(){
 							 --bind 'focus:preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {-1})+transform-input-label(current_filter {-1})'\
 							 --bind 'enter:execute-silent(preview_station {1} "play")+accept'\
 							 --bind 'ctrl-a:execute(add_to_favourite $fav_dbfile {1})+reload(reload_script filter_stations)'\
-							 --bind 'ctrl-f:execute-silent(set_current_layer 3)+reload(reload_script favourite_stations)+transform-prompt(echo 收藏电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")+clear-query' \
+							 --bind 'ctrl-f:execute-silent(set_current_layer "3\nfavourites")+reload-sync(reload_script favourite_stations)+transform-border-label(echo $label)' \
 							 --bind 'right,ctrl-l:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(inc_layer {})+reload-sync(reload_layer $(current_layer) {})+transform-border-label(echo $label)' \
 							 --bind 'left,ctrl-h:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(dec_layer)+reload-sync(reload_layer $(current_layer) "")+transform-border-label(echo $label)' \
 				)
@@ -438,7 +447,6 @@ function main(){
 
 	# --bind 'focus:execute-silent(update_layer $(( $(current_layer) )) {})+preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {1})'\
 	# --bind 'ctrl-h:execute-silent(set_current_layer $(( $(current_layer) - 1 )))+reload(reload_layer $(current_layer) $(value_of_layer (( $(current_layer) + 1 )) ))+transform-prompt(echo 电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")' \
-
 	# --bind 'focus:execute-silent(update_layer $(( $(current_layer) )) {})+preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {1})+transform-header([ $(current_layer) = 3 ] && station_info {1})'\
 	echo $radio_search_filter:$filter_value
 	exit 1
