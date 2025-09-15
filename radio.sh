@@ -410,7 +410,6 @@ export -f station_info
 # fetch_filtered_stations_value_with_uuid "$(filter_stations language 'german')"
 # fetch_filtered_stations_value_with_uuid "$(filter_stations country "The Netherlands")"
 # exit
-set_current_layer 1
 function main(){
 	[ -d ${RADIO_RUN_DIR} ] || mkdir -p ${RADIO_RUN_DIR}
 	[ -p ${RADIO_RUN_DIR}/filter_type_pipe ] || mkfifo ${RADIO_RUN_DIR}/filter_type_pipe
@@ -418,6 +417,7 @@ function main(){
 	# fetch_stations_value_with_uuid stationuuid name
 	# fetch_stations_value_with_uuid stationuuid
 	# fetch_stations_value_with_uuid tags
+	set_current_layer 1
 	label="$(echo -n -e "--请选择分类标准--" | lolcat -f)"
 
 	local filter_value
