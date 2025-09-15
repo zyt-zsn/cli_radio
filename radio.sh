@@ -73,7 +73,7 @@ function fetch_filtered_stations_value_with_uuid2(){
 		# cat favourite_stations.json|jq .[] | jq --arg fav_uuids "$zyt" '.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":" end+.name'
 		#zyt
 
-		cat $dbfile | jq -r --arg k "$k" --arg v "$v" --arg fav_uuids "$fav_uuids" '.[]|select(.[$k]==$v)|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.name'|tee ${RADIO_RUN_DIR}/condidates/filtered/"$k"_"$v"
+		cat $dbfile | jq -r --arg k "$k" --arg v "$v" --arg fav_uuids "$fav_uuids" '.[]|select(.[$k]|tostring==$v)|.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":  " end+.name'|tee ${RADIO_RUN_DIR}/condidates/filtered/"$k"_"$v"
 		# cat $dbfile | jq --arg k "$1" --arg v "$2" -r '.[]|select(.[$k]==$v)|.stationuuid+":"+.["name"]'
 	fi
 }
