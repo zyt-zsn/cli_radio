@@ -2,7 +2,7 @@
 #
 # Script name: dm-cli-radio
 # Description: listen radio on line in terminal 
-# Dependencies: jq, fzf, mpv
+# Dependencies: jq, fzf, mpv, pgrep
 # Contributors: zyt
 
 export dbfile=~/.config/radio/stations.json
@@ -371,7 +371,7 @@ function preview_station(){
 			read radio < ${RADIO_RUN_DIR}/listening_radio
 			# pkill -9 mpv;nohup mpv $(echo $station | jq -r .url) > /dev/null 2>&1 &
 
-			pgrep mpv || setsid -f mpv --loop-playlist=force "$(echo "$radio" | awk -F "|"  '{print $2}')" &
+			pgrep mpv || setsid -f mpv --user-agent="CliRadio#$uuid" --loop-playlist=force "$(echo "$radio" | awk -F "|"  '{print $2}')" &
 
 		# 	while true;do
 		# 		echo -e "\033[2J"
@@ -385,6 +385,23 @@ function preview_station(){
 }
 export -f preview_station
 
+function background_radio_player_pid(){
+	set -e -o pipefail
+	echo $(pgrep --full -a CliRadio | awk '{print $1}')
+}
+function toggle_backgound_radio(){
+	set -e -o pipefail
+	# [[**  (bookmark--jump-via "("PROCESS STATE CODES" (front-context-string . "Here are the  di") (rear-context-string . "TE CODES\n       ") (position . 23163) (last-modified 26826 20816 474909 90000) (location . "man 1 ps") (man-args . "1 ps") (handler . Man-bookmark-jump) (defaults "ps - report a snapshot of the current processes."	   "*Man 1 ps*"))" 'switch-to-buffer-other-window)  **]]
+	local pid=$(background_radio_player_pid)
+	[[ $(ps --no-header --format stat --pid $pid) =~ T  ]] && kill -SIGCONT $pid || kill -SIGSTOP $pid
+}
+function background_station_uuid(){
+	set -e -o pipefail
+	echo $(pgrep --full -a CliRadio | awk -F 'Radio#' '{print $2}' | awk '{print $1}')
+}
+export -f toggle_backgound_radio
+export -f background_station_uuid
+export -f background_radio_player_pid
 function station_info(){
 	local uuid="$1"
 	local countrycode
@@ -407,6 +424,7 @@ export -f station_info
 # fetch_filtered_stations_value_with_uuid "$(filter_stations language 'chinese')"
 # fetch_filtered_stations_value_with_uuid "$(filter_stations language 'german')"
 # fetch_filtered_stations_value_with_uuid "$(filter_stations country "The Netherlands")"
+# station_info $(background_station_uuid)
 # exit
 function main(){
 	[ -d ${RADIO_RUN_DIR} ] || mkdir -p ${RADIO_RUN_DIR}
@@ -432,9 +450,10 @@ function main(){
 							 --with-nth -1\
 							 --border-label $label  --prompt "请选择: "\
 							 --bind 'ctrl-p:execute-silent(pkill -9 mpv;preview_station {1} "play")+transform-preview-label(echo {1})+transform-header([ $(current_layer) = 3 ] && echo -n -e "当前播放\n" "$(station_info {1})")'\
-							 --bind 'load:transform-query(current_layer_value)+rebind(right,ctrl-l,left,ctrl-h)' \
+							 --bind 'load:transform-query(current_layer_value)+rebind(right,ctrl-l,left,ctrl-h)+transform-header(echo -n -e "当前播放\n" "$(station_info $(background_station_uuid))")' \
 							 --bind 'focus:preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {-1})+transform-input-label(current_filter {-1})'\
 							 --bind 'enter:execute-silent(preview_station {1} "play")+accept'\
+							 --bind 'ctrl-t:execute-silent(toggle_backgound_radio)'\
 							 --bind 'ctrl-a:execute-silent(toggle_favourite $fav_dbfile {1})+reload-sync(reload_layer $(current_layer) "" refresh)'\
 							 --bind 'ctrl-f:execute-silent(set_current_layer "3\nfavourites")+reload-sync(reload_script favourite_stations)+transform-border-label(echo $label)' \
 							 --bind 'right,ctrl-l:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(inc_layer {})+reload-sync(reload_layer $(current_layer) {})+transform-border-label(echo $label)' \
