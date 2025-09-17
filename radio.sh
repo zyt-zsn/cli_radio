@@ -60,14 +60,15 @@ function fetch_filtered_stations_value_with_uuid2(){
 	[[ -d ${RADIO_RUN_DIR}/condidates/filtered ]] || mkdir ${RADIO_RUN_DIR}/condidates/filtered
 
 	local sta_json_array=$1
-	local fav_uuids=$(favourite_station_uuid_array)
 	local k="$1"
 	local v="$2"
+	local refresh="$3"
 
-	if [[ -f ${RADIO_RUN_DIR}/condidates/filtered/"$k"_"$v" ]];then
+	if [[ -f ${RADIO_RUN_DIR}/condidates/filtered/"$k"_"$v" && -z $refresh ]];then
 		cat ${RADIO_RUN_DIR}/condidates/filtered/"$k"_"$v"
 	else
 		[[ $k == "country" ]] && v=${v:2}
+		local fav_uuids=$(favourite_station_uuid_array)
 		# zyt=$(jq -r .[].stationuuid favourite_stations.json)
 		# cat favourite_stations.json | jq --arg fav_uuids "$zyt" '.[].stationuuid+if .[].stationuuid|inside($fav_uuids) then ":💘" else ":" end+"name"'
 		# cat favourite_stations.json|jq .[] | jq --arg fav_uuids "$zyt" '.stationuuid+if .stationuuid|inside($fav_uuids) then ":💘" else ":" end+.name'
@@ -195,28 +196,24 @@ export -f station_in_favourites
 #	path of favourite station db file
 #paramter2
 #	stationuuid of radio station to add to favourites
-function add_to_favourite(){
+function toggle_favourite(){
 	local fav_db_file=$1
 	local uuid=$2
 
 	set +eo pipefail
 	if ! station_in_favourites $uuid
-	# if [[ -z $(cat $fav_db_file | jq '.[]'| jq --arg uuid $uuid 'select(.stationuuid==$uuid)') ]]
 	then
-		# echo "uuid"--$uuid
-		# echo $
 		local station=$(cat $dbfile | jq --arg uuid "$uuid" '.[]|select(.stationuuid==$uuid)')
-		echo "$(echo "$(cat $fav_db_file|jq .[]) $station" | jq -s .)" > $fav_db_file.swap
+		echo "$(echo "$(cat $fav_db_file|jq .[]) $station" | jq -s)" > $fav_db_file.swap
 		rm -f $fav_db_file
 		mv $fav_db_file.swap $fav_db_file
-		# echo "station"--$station
-		# echo -n "$(cat $fav_db_file) $station"
-	# 	echo Add to favourite
-	# else
-	# 	echo found
+	else
+		echo "$(cat $fav_db_file | jq --arg uuid "$uuid" '.[]|select(.stationuuid!=$uuid)' | jq -s)" > $fav_db_file.swap
+		rm -f $fav_db_file
+		mv $fav_db_file.swap $fav_db_file
 	fi
 }
-export -f add_to_favourite
+export -f toggle_favourite
 function set_current_layer(){
 	if [[ "$1" =~ "favourites" ]]; then
 		echo -e "$1" > ${RADIO_RUN_DIR}/current_layer
@@ -268,7 +265,7 @@ function dec_layer(){
 }
 function current_filter(){
 	if [ "favourites" == `tail -n 1 ${RADIO_RUN_DIR}/current_layer` ];then
-		echo 收藏电台:"$1"
+		echo 💘收藏电台💘:"$1"
 	else
 		local ret=""
 		for (( i=1; i<$(current_layer); i++ ));do
@@ -293,6 +290,7 @@ export -f update_current_layer
 function reload_layer(){
 	local layer=$1
 	local v="$2"
+	local refresh="$3"
 	case $layer in
 		1)
 			list_station_keys ;;
@@ -303,7 +301,7 @@ function reload_layer(){
 		3)
 			# fetch_filtered_stations_value_with_uuid2 "$(value_of_layer 1)" "$(value_of_layer 2)" ;;
 			[[ -n $v ]] || v="$(value_of_layer 2)"
-			fetch_filtered_stations_value_with_uuid2 "$(value_of_layer 1)" "$v" ;;
+			fetch_filtered_stations_value_with_uuid2 "$(value_of_layer 1)" "$v" "$refresh" ;;
 		4)
 			# preview_station "$2" "view_only" ;;
 			# echo -n -e "1\n2\n3" ;;
@@ -437,7 +435,7 @@ function main(){
 							 --bind 'load:transform-query(current_layer_value)+rebind(right,ctrl-l,left,ctrl-h)' \
 							 --bind 'focus:preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {-1})+transform-input-label(current_filter {-1})'\
 							 --bind 'enter:execute-silent(preview_station {1} "play")+accept'\
-							 --bind 'ctrl-a:execute(add_to_favourite $fav_dbfile {1})+reload(reload_script filter_stations)'\
+							 --bind 'ctrl-a:execute-silent(toggle_favourite $fav_dbfile {1})+reload-sync(reload_layer $(current_layer) "" refresh)'\
 							 --bind 'ctrl-f:execute-silent(set_current_layer "3\nfavourites")+reload-sync(reload_script favourite_stations)+transform-border-label(echo $label)' \
 							 --bind 'right,ctrl-l:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(inc_layer {})+reload-sync(reload_layer $(current_layer) {})+transform-border-label(echo $label)' \
 							 --bind 'left,ctrl-h:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(dec_layer)+reload-sync(reload_layer $(current_layer) "")+transform-border-label(echo $label)' \
