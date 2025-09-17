@@ -443,6 +443,8 @@ function main(){
 							 --preview-label " 电台信息 "\
 							 --delimiter ":"\
 							 --exact\
+							 --reverse\
+							 --tac\
 							 --ansi\
 							 --sync\
 							 --input-label ' 分类器 '\
