@@ -6,9 +6,11 @@
 # Contributors: zyt
 
 export dbfile=~/.config/radio/stations.json
+export fav_dbfile=~/.config/radio/favourite_stations.json
+export RADIO_RUN_DIR=/run/user/1000/radio
+# source /home/zyt/github/cli_radio/_helper.sh
 
 # export dbfile=~/.config/radio/test.json
-export fav_dbfile=~/.config/radio/favourite_stations.json
 #list all values with respect of ".stationuuid:.query_key"
 # paramter number 1
 # paramter 1: query_key
@@ -97,8 +99,6 @@ function update_station_db(){
 function get_station_dbcashe(){
 	echo station.json
 }
-RADIO_RUN_DIR=/run/user/1000/radio
-export RADIO_RUN_DIR
 #list all the supported searching key of station
 function list_station_keys(){
 	if [[ -f ${RADIO_RUN_DIR}/keys ]]; then
@@ -352,10 +352,9 @@ function preview_station(){
 		# if [[ -f ${RADIO_RUN_DIR}/listening_radio ]]; then
 			local radion
 			read radio < ${RADIO_RUN_DIR}/listening_radio
-			# pkill -9 mpv;nohup mpv $(echo $station | jq -r .url) > /dev/null 2>&1 &
-
-			pgrep mpv || setsid -f mpv --user-agent="CliRadio#$uuid" --loop-playlist=force "$(echo "$radio" | awk -F "|"  '{print $2}')" &
-
+			kill_background_radio_player
+			# setsid -f mpv --user-agent="CliRadio#$uuid" --loop-playlist=force "$(echo "$radio" | awk -F "|"  '{print $2}')" &>/dev/null &
+			nohup mpv --user-agent="CliRadio#$uuid" --loop-playlist=force "$(echo "$radio" | awk -F "|"  '{print $2}')" &>/dev/null &
 		# 	while true;do
 		# 		echo -e "\033[2J"
 		# 		echo -e "$station_info"
@@ -370,12 +369,16 @@ export -f preview_station
 
 function background_radio_player_pid(){
 	set -e -o pipefail
-	echo $(pgrep --full -a CliRadio | awk '{print $1}')
+	pgrep --full -a CliRadio | awk '{print $1}'
 }
 function background_radio_player_state(){
 	set -e -o pipefail
 	local pid=$(background_radio_player_pid)
-	[[ $(ps --no-header --format stat --pid $pid) =~ T  ]] && echo "paused" || echo "playing"
+	if [[ -n "$pid" ]];then
+		[[ $(ps --no-header --format stat --pid $pid) =~ T  ]] && echo "paused" || echo "playing"
+	else
+		echo "none"
+	fi
 }
 function toggle_backgound_radio(){
 	set -e -o pipefail
@@ -387,6 +390,17 @@ function background_station_uuid(){
 	set -e -o pipefail
 	echo $(pgrep --full -a CliRadio | awk -F 'Radio#' '{print $2}' | awk '{print $1}')
 }
+function kill_background_radio_player(){
+	local pid
+	pid=$(background_radio_player_pid)
+	if [[ -n $pid ]];then
+		kill -9 $pid
+		while [[ -n $(background_radio_player_pid) ]];do
+			:
+		done
+	fi
+}
+export -f kill_background_radio_player
 export -f toggle_backgound_radio
 export -f background_station_uuid
 export -f background_radio_player_pid
@@ -410,13 +424,21 @@ function station_info(){
 }
 export -f station_info
 function current_playing_station_prompt(){
-
-	if [[ $(background_radio_player_state) == "playing" ]];then
-		echo -n -e "播放中${YELLOW}${BOLD}Ctrl+t${RESET} to ⏸️\n" "$(station_info $(background_station_uuid))"
-	else
-		echo -n -e "暂停中${YELLOW}${BOLD}Ctrl+t${RESET} to ▶️\n" "$(station_info $(background_station_uuid))"
-	fi
+	case $(background_radio_player_state) in
+		playing)
+			echo -n -e "播放中${YELLOW}${BOLD}Ctrl+t${RESET} to ⏸️\n" "$(station_info $(background_station_uuid))"
+			;;
+		paused)
+			echo -n -e "暂停中${YELLOW}${BOLD}Ctrl+t${RESET} to ▶️\n" "$(station_info $(background_station_uuid))"
+			;;
+		*)
+			;;
+	esac
 }
+function current_playing_station_info(){
+	[[ -n $(background_radio_player_pid) ]] && station_info "$1"
+}
+export -f current_playing_station_info
 export -f current_playing_station_prompt
 # fetch_filtered_stations_value_with_uuid $(filter_stations "$(value_of_layer 2)" "$(value_of_layer 3)")
 # filter_stations "$(value_of_layer 2)" "$(value_of_layer 3)"
@@ -457,10 +479,8 @@ init_pretty_print() {
 function main(){
 	init_pretty_print
 	[ -d ${RADIO_RUN_DIR} ] || mkdir -p ${RADIO_RUN_DIR}
-	[ -p ${RADIO_RUN_DIR}/filter_type_pipe ] || mkfifo ${RADIO_RUN_DIR}/filter_type_pipe
 	# update_station_db test.json 10
-	set_current_layer 1
-	label="$(echo -n -e "--请选择分类标准--" | lolcat -f)"
+	[[ -n $(current_layer) ]] || set_current_layer 1
 
 	local filter_value
 	label="$(echo -n -e "--请选择分类标准--" | lolcat -f)"
@@ -478,10 +498,10 @@ function main(){
 							 --border\
 							 --with-nth -1\
 							 --border-label $label  --prompt "请选择: "\
+							 --bind 'ctrl-r:pos(100)'\
 							 --bind 'ctrl-p:execute-silent(pkill -9 mpv;preview_station {1} "play")+transform-preview-label(echo {1})+transform-header-label(current_playing_station_prompt)+transform-header([ $(current_layer) = 3 ] && echo -n -e "$(station_info {1})")'\
-							 --bind 'load:transform-query(current_layer_value)+rebind(right,ctrl-l,left,ctrl-h)+transform-header-label(current_playing_station_prompt)+transform-header(station_info $(background_station_uuid))' \
+							 --bind 'load:transform-query(current_layer_value)+rebind(right,ctrl-l,left,ctrl-h)+transform-header-label(current_playing_station_prompt)+transform-header(current_playing_station_info $(background_station_uuid))' \
 							 --bind 'focus:preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {-1})+transform-input-label(current_filter {-1})'\
-							 --bind 'enter:execute-silent(preview_station {1} "play")+accept'\
 							 --bind 'ctrl-t:execute-silent(toggle_backgound_radio)+transform-header-label(current_playing_station_prompt)'\
 							 --bind 'ctrl-a:execute-silent(toggle_favourite $fav_dbfile {1})+reload-sync(reload_layer $(current_layer) "" refresh)'\
 							 --bind 'ctrl-f:execute-silent(set_current_layer "3\nfavourites")+reload-sync(reload_script favourite_stations)+transform-border-label(echo $label)' \
@@ -489,24 +509,23 @@ function main(){
 							 --bind 'left,ctrl-h:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(dec_layer)+reload-sync(reload_layer $(current_layer) "")+transform-border-label(echo $label)' \
 				)
 
-           # fzf --bind 'focus:transform-header:file --brief {}'
-
+							 # --bind 'ctrl-r:pos(echo $(( $SRANDOM % $FZF_TOTAL_COUNT )) )'\
+	# --bind 'enter:execute-silent(preview_station {1} "play")+accept'\
 	# --bind 'focus:execute-silent(update_layer $(( $(current_layer) )) {})+preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {1})'\
 	# --bind 'ctrl-h:execute-silent(set_current_layer $(( $(current_layer) - 1 )))+reload(reload_layer $(current_layer) $(value_of_layer (( $(current_layer) + 1 )) ))+transform-prompt(echo 电台: )+transform-border-label(echo $label)+transform-input-label(echo " 电台 ")' \
 	# --bind 'focus:execute-silent(update_layer $(( $(current_layer) )) {})+preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {1})+transform-header([ $(current_layer) = 3 ] && station_info {1})'\
-	echo $radio_search_filter:$filter_value
-	exit 1
-	# local candidates=$(fetch_stations_value_with_uuid name)
-	local candidates=$(fetch_filtered_stations_value_with_uuid "$(filter_stations $radio_search_filter $filter_value)")
-	[[  ${#filter_value} -gt 1 ]] || exit 1
-	
-	echo -n -e "$candidates" | fzf --delimiter ":"\
-								   --with-nth -1\
-								   --accept-nth 1\
-								   --bind 'alt-right:reload(list_valid_condidates $radio_search_filter;set radio_seach_filter="country")'\
-								   --bind 'tab:reload(fetch_filtered_stations_value_with_uuid "$(filter_stations language {q})")+clear-query'
 
-								   # --bind 'alt-right:reload(fetch_stations_value_with_uuid "language")'\
+	if [[ -n "$filter_value" ]];then
+		kill_background_radio_player
+		# echo play radio
+		preview_station "$filter_value" "play"
+		# pgrep --full -a CliRadio | awk '{print $1}'
+		until [[ -n $(background_radio_player_pid) ]];do
+			:
+		done
+		# disown -a
+	fi
+	exit 0
 }
 # testzyt
 main
