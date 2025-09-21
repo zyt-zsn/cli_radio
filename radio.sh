@@ -206,13 +206,13 @@ function set_current_layer(){
 }
 function current_layer(){
 	# cat ${RADIO_RUN_DIR}/current_layer
-	head -n 1 ${RADIO_RUN_DIR}/current_layer
+	[[ -f ${RADIO_RUN_DIR}/current_layer ]] && head -n 1 ${RADIO_RUN_DIR}/current_layer
 }
 #Get filter value of layer $1
 #Parameter:
 #$1: target layer
 function value_of_layer(){
-	cat ${RADIO_RUN_DIR}/layer${1}
+	[[ -f ${RADIO_RUN_DIR}/layer${1} ]] && cat ${RADIO_RUN_DIR}/layer${1}
 }
 
 function current_layer_value(){
