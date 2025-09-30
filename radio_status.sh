@@ -23,13 +23,17 @@ dbfile=~/.config/radio/stations.json
 function current_playing_station_prompt(){
 	set +e +o pipefail
 	local uuid
+	local radio_name
 	uuid=$(background_radio_uuid)
 	if [[ -n "$uuid" ]]; then
-		local radio_name
-		if [[ -f $RADIO_RUN_DIR/stations/${uuid} ]];then
-			radio_name=$(head -n 1 $RADIO_RUN_DIR/stations/"$uuid" | awk -F ":" '{print $2}')
+		if [[ -f ${RADIO_RUN_DIR}/listening_radio ]];then
+			radio_name=$(awk -F "|" '{print $1}' ${RADIO_RUN_DIR}/listening_radio)
 		else
-			radio_name=$(jq -r --arg uuid "$uuid" '.[]|select (.stationuuid==$uuid)|.name' $dbfile)
+			if [[ -f $RADIO_RUN_DIR/stations/${uuid} ]];then
+				radio_name=$(head -n 1 $RADIO_RUN_DIR/stations/"$uuid" | awk -F ":" '{print $2}')
+			else
+				radio_name=$(jq -r --arg uuid "$uuid" '.[]|select (.stationuuid==$uuid)|.name' $dbfile)
+			fi
 		fi
 		if [[ $(background_radio_player_state) == "playing" ]];then
 			echo -e "󰐹 $radio_name"
