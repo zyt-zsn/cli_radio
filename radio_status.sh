@@ -37,7 +37,7 @@ function current_playing_station_prompt(){
 			echo -e "󱈜 $radio_name"
 		fi
 	else
-		echo -e "󰐹 "
+		echo -e "󱈜 "
 	fi
 }
 current_playing_station_prompt
