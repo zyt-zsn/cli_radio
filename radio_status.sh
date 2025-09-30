@@ -9,13 +9,13 @@ function background_radio_player_pid(){
 
 function background_radio_uuid(){
 	set -e -o pipefail
-	pgrep --full -a CliRadio | awk -F '[# ]' '{print $4}'
+	pgrep --full -a "CliRadio#[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" | awk -F '[# ]' '{print $4}'
 }
 function background_radio_player_state(){
 	set -e -o pipefail
 	local pid
 	pid=$(background_radio_player_pid)
-	[[ $(ps --no-header --format stat --pid $pid) =~ T  ]] && echo "paused" || echo "playing"
+	[[ -n $pid ]] && [[ $(ps --no-header --format stat --pid $pid) =~ T  ]] && echo "paused" || echo "playing"
 }
 
 dbfile=~/.config/radio/stations.json
