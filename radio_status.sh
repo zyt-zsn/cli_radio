@@ -13,9 +13,14 @@ function background_radio_uuid(){
 }
 function background_radio_player_state(){
 	set -e -o pipefail
-	local pid
-	pid=$(background_radio_player_pid)
-	[[ -n $pid ]] && [[ $(ps --no-header --format stat --pid $pid) =~ T  ]] && echo "paused" || echo "playing"
+
+	if [[ -S "$RADIO_MPV_SOCKET" ]]; then
+		[[ $(echo '{ "command": ["get_property", "pause"] }' | socat - "$RADIO_MPV_SOCKET" | jq .data) = true ]] && echo "paused" || echo "playing"
+	else
+		local pid
+		pid=$(background_radio_player_pid)
+		[[ -n $pid ]] && [[ $(ps --no-header --format stat --pid $pid) =~ T  ]] && echo "paused" || echo "playing"
+	fi
 }
 
 dbfile=~/.config/radio/stations.json

@@ -8,6 +8,7 @@
 export dbfile=~/.config/radio/stations.json
 export fav_dbfile=~/.config/radio/favourite_stations.json
 export RADIO_RUN_DIR=/run/user/1000/radio
+export RADIO_MPV_SOCKET=/run/user/1000/radio/mpvsocket
 # source /home/zyt/github/cli_radio/_helper.sh
 
 # export dbfile=~/.config/radio/test.json
@@ -371,7 +372,7 @@ function preview_station() {
 			read radio <${RADIO_RUN_DIR}/listening_radio
 			kill_background_radio_player
 			# setsid -f mpv --user-agent="CliRadio#$uuid" --loop-playlist=force "$(echo "$radio" | awk -F "|"  '{print $2}')" &>/dev/null &
-			nohup mpv --user-agent="CliRadio#$uuid" --loop-playlist=force "$(echo "$radio" | awk -F "|" '{print $2}')" &>/dev/null &
+			nohup mpv --input-ipc-server="$RADIO_MPV_SOCKET" --user-agent="CliRadio#$uuid" --loop-playlist=force "$(echo "$radio" | awk -F "|" '{print $2}')" &>/dev/null &
 		# 	while true;do
 		# 		echo -e "\033[2J"
 		# 		echo -e "$station_info"
