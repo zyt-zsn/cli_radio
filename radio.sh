@@ -507,9 +507,9 @@ function main() {
 				--exact --reverse --tac --ansi --sync --input-label-pos 5:top --input-label ' 分类器 ' \
 				--border --with-nth -1 --border-label $label --prompt "请选择: " \
 				--bind 'ctrl-r:pos(100)' \
-				--bind 'ctrl-p:execute-silent(pkill -9 mpv;preview_station {1} "play")+transform-preview-label(echo {1})+transform-header-label(current_playing_station_prompt)+transform-header([ $(current_layer) = 3 ] && echo -n -e "$(station_info {1})")' \
+				--bind 'ctrl-p:execute-silent(pkill -9 mpv;preview_station {1} "play")+transform-preview-label(echo -n -e "${YELLOW}${BOLD}Ctrl+a${RESET}: Add to favourites")+transform-header-label(current_playing_station_prompt)+transform-header([ $(current_layer) = 3 ] && echo -n -e "$(station_info {1})")' \
 				--bind 'load:transform-query(current_layer_value)+rebind(right,ctrl-l,left,ctrl-h)+transform-header-label(current_playing_station_prompt)+transform-header(current_playing_station_info $(background_station_uuid))' \
-				--bind 'focus:preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo {-1})+transform-input-label(current_filter {-1})' \
+				--bind 'focus:preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo -n -e "${YELLOW}${BOLD}Ctrl+h${RESET}:Back ${YELLOW}${BOLD}Ctrl+p${RESET}:Previw ${YELLOW}${BOLD}Ctrl+l${RESET}:Select")+transform-input-label(current_filter {-1})' \
 				--bind 'ctrl-t:execute-silent(toggle_backgound_radio)+transform-header-label(current_playing_station_prompt)' \
 				--bind 'ctrl-a:execute-silent(toggle_favourite $fav_dbfile {1})+reload-sync(reload_layer $(current_layer) "" refresh)' \
 				--bind 'ctrl-f:execute-silent(set_current_layer "3\nfavourites")+reload-sync(reload_script favourite_stations)+transform-border-label(echo $label)' \
