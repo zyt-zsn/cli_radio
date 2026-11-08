@@ -1,0 +1,11 @@
+# Editor / manual backups
+*~
+*-back
+
+# Older local script variants kept for reference
+1radio.sh
+radio22.sh
+
+# Local capture filter configuration
+rootfilter.txt
+tcpdumpfilter.txt

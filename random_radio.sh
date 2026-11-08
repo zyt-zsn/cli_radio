@@ -5,6 +5,9 @@
 #              excluding the station that is currently playing
 # Dependencies: jq, mpv, pgrep, shuf
 
+exec {LOCK_FD}>/run/user/1000/radio-flock
+flock --verbose -en "$LOCK_FD" || exit 1 
+
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 source "$SCRIPT_DIR/_helper.sh"
 
@@ -85,3 +88,4 @@ function main() {
 }
 
 main
+flock -u "$LOCK_FD" 
