@@ -41,7 +41,7 @@ function current_playing_station_prompt(){
 			fi
 		fi
 		if [[ -f $fav_dbfile ]] && jq -e --arg uuid "$uuid" 'any(.[]; .stationuuid == $uuid)' "$fav_dbfile" &>/dev/null; then
-			radio_name+=" ❤️"
+			radio_name+=" ❤"
 		fi
 		if [[ $(background_radio_player_state) == "playing" ]];then
 			echo -e "󰐹 $radio_name"
