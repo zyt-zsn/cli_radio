@@ -9,7 +9,7 @@ function background_radio_player_pid(){
 
 function background_radio_uuid(){
 	set -e -o pipefail
-	pgrep --full -a "CliRadio#[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" | awk -F '[# ]' '{print $4}'
+	pgrep --full -a "CliRadio#[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" | grep -oE 'CliRadio#[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | sed 's/^CliRadio#//' | head -n 1
 }
 function background_radio_player_state(){
 	set -e -o pipefail
@@ -39,6 +39,9 @@ function current_playing_station_prompt(){
 			else
 				radio_name=$(jq -r --arg uuid "$uuid" '.[]|select (.stationuuid==$uuid)|.name' $dbfile)
 			fi
+		fi
+		if [[ -f $fav_dbfile ]] && jq -e --arg uuid "$uuid" 'any(.[]; .stationuuid == $uuid)' "$fav_dbfile" &>/dev/null; then
+			radio_name+=" ❤️"
 		fi
 		if [[ $(background_radio_player_state) == "playing" ]];then
 			echo -e "󰐹 $radio_name"
