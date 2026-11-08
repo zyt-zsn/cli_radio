@@ -206,6 +206,14 @@ function toggle_favourite() {
 	fi
 }
 export -f toggle_favourite
+#Add currently playing station to favourite_stations
+function add_current_station_to_favourites() {
+	local uuid
+	uuid=$(background_station_uuid)
+	[[ -n $uuid ]] || return 0
+	station_in_favourites "$uuid" || toggle_favourite "$fav_dbfile" "$uuid"
+}
+export -f add_current_station_to_favourites
 function set_current_layer() {
 	if [[ "$1" =~ "favourites" ]]; then
 		echo -e "$1" >${RADIO_RUN_DIR}/current_layer
@@ -444,10 +452,10 @@ export -f station_info
 function current_playing_station_prompt() {
 	case $(background_radio_player_state) in
 	playing)
-		echo -n -e "播放中${YELLOW}${BOLD}Ctrl+t${RESET} to ⏸️\n" "$(station_info $(background_station_uuid))"
+		echo -n -e "播放中${YELLOW}${BOLD}Ctrl+t${RESET} to ⏸️ ${YELLOW}${BOLD}Ctrl+s${RESET} 收藏\n" "$(station_info $(background_station_uuid))"
 		;;
 	paused)
-		echo -n -e "暂停中${YELLOW}${BOLD}Ctrl+t${RESET} to ▶️\n" "$(station_info $(background_station_uuid))"
+		echo -n -e "暂停中${YELLOW}${BOLD}Ctrl+t${RESET} to ▶️ ${YELLOW}${BOLD}Ctrl+s${RESET} 收藏\n" "$(station_info $(background_station_uuid))"
 		;;
 	*) ;;
 	esac
@@ -512,6 +520,7 @@ function main() {
 				--bind 'focus:preview(reload_layer $(( $(current_layer) + 1 )) {1})+transform-preview-label(echo -n -e "${YELLOW}${BOLD}Ctrl+h${RESET}:Back ${YELLOW}${BOLD}Ctrl+p${RESET}:Previw ${YELLOW}${BOLD}Ctrl+l${RESET}:Select")+transform-input-label(current_filter {-1})' \
 				--bind 'ctrl-t:execute-silent(toggle_backgound_radio)+transform-header-label(current_playing_station_prompt)' \
 				--bind 'ctrl-a:execute-silent(toggle_favourite $fav_dbfile {1})+reload-sync(reload_layer $(current_layer) "" refresh)' \
+				--bind 'ctrl-s:execute-silent(add_current_station_to_favourites)+reload-sync(reload_layer $(current_layer) "" refresh)+transform-header-label(current_playing_station_prompt)' \
 				--bind 'ctrl-f:execute-silent(set_current_layer "3\nfavourites")+reload-sync(reload_script favourite_stations)+transform-border-label(echo $label)' \
 				--bind 'right,ctrl-l:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(inc_layer {})+reload-sync(reload_layer $(current_layer) {})+transform-border-label(echo $label)' \
 				--bind 'left,ctrl-h:unbind(right,ctrl-l,left,ctrl-h)+execute-silent(dec_layer)+reload-sync(reload_layer $(current_layer) "")+transform-border-label(echo $label)'
